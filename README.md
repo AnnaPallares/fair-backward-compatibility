@@ -1,6 +1,6 @@
 # Fair Backward Compatibility (FBC)
 
-This repository contains the official implementation of the **Fair Backward Compatibility** framework published in the paper *Fair Backward Compatibility: Definitions, Theoretical Framework, and Empirical Results*.
+This repository contains the official implementation of the **Fair Backward Compatibility** framework described in the paper *Fair Backward Compatibility: Definitions, Theoretical Framework, and Empirical Results*.
 
 ## Abstract
 Machine learning model updates often prioritize aggregate performance (e.g., accuracy) while neglecting sample-wise behavior. This can lead to **negative flips**—instances where a new model ($f_{new}$) fails on samples correctly predicted by a legacy model ($f_{old}$). When these flips disproportionately affect groups defined by sensitive attributes (e.g., race or sex), the models become both backward-incompatible and unfair.
