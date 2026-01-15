@@ -1,0 +1,30 @@
+name: fair-backward
+channels:
+  - gurobi
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy=1.26.4
+  - pandas>=2.2.0
+  - scipy>=1.15.0
+  - scikit-learn>=1.6.0
+  - matplotlib>=3.10.0
+  - seaborn
+  - tqdm
+  - pyyaml
+  - joblib
+  - gurobi::gurobi
+  - pillow
+  - pip:
+      - xgboost>=2.0.0
+      - tensorflow==2.16.2
+      - keras==3.10.0
+      - wandb
+      - pydantic
+      - rich
+      - click
+      - h5py
+      - tensorboard
+      - typing-extensions
