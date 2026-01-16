@@ -12,7 +12,7 @@ def get_Xy(df, dataset_name):
     """
     dataset_name = dataset_name.lower()  
     dim = df.shape
-    # Standard cleanup for  datasets (removing index column and extracting label)
+    # Standard cleanup for  datasets (removing index column -important note: cehck if exists or not- and extracting label)
     X = df.iloc[:, 1:(dim[1]-1)]
     y = df.iloc[:, (dim[1]-1)]
 
@@ -39,7 +39,7 @@ def prepare_data(X, y, seed, size0, size1, dataset_name, model_type):
     ind1 = random.sample(range(n), int(n * size1))
     ind0 = random.sample(ind1, int(n * size0)) # ind0 is a subset of ind1
 
-    # Apply your specific Normalization for SVM
+    # Apply specific normalization for SVM mdoels
     if model_type == 'svm':
         X0_tr = normalize(X_tr.iloc[ind0, :], axis=0)
         X1_tr = normalize(X_tr.iloc[ind1, :], axis=0)

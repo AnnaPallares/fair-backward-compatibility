@@ -17,7 +17,6 @@ def get_grid(model_type):
             'alpha': [0, 0.1, 1],
             'gamma': [0, 0.1, 1],
             'tree_method': ['hist'] # For faster training
-            # 'n_jobs': [1] # Keep internal jobs at 1 so the CV loop can use the 25 cores
         }
 
 def get_default_config(m_old, m_new, method):

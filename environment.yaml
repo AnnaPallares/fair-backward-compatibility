@@ -18,6 +18,7 @@ dependencies:
   - gurobi::gurobi
   - pillow
   - pip:
+      - keras-hub
       - xgboost>=2.0.0
       - tensorflow==2.16.2
       - keras==3.10.0

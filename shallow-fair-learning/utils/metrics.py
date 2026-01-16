@@ -8,6 +8,7 @@ def neg_flip_cond(y_true,y_mod1,y_mod2,s0,NFtype):
 
     s0 = np.array(s0).astype(int) # Converts [True, False] to [1, 0]
     
+    # Setting fairness definition (DP/EO) 
     if NFtype == 'positive':
         NFcond = [y_true[i]==1 for i in range(len(y_true))]
     elif NFtype == 'negative':

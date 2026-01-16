@@ -35,10 +35,8 @@ def main():
             
             print(f"--- Finished in {((end_time - start_time)/60):.2f} minutes ---")
             
-            # Combine experimental metadata with results
             results.append({**res, 'dataset': ds_name, 'scenario': f"{m_old}_{m_new}", 'method': method})
 
-    # Save to CSV for easy analysis in Excel/Pandas
     pd.DataFrame(results).to_csv('experiment_results.csv', index=False)
     print("\nExperiments finished. Data saved to experiment_results.csv")
 

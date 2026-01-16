@@ -10,25 +10,25 @@ We propose **Fair Backward-Compatible Empirical Risk Minimization (FBCERM)**, a 
 ## Key Definitions
 * **Negative Flip (NF):** an instance where $f_{old}(x) = y$ (correct) but $f_{new}(x) \neq y$ (incorrect).
 * **Backward Incompatibility:** the presence of negative flips during a model update.
-* **Fair Backward Compatibility:** ensuring that the distribution of negative flips is not biased with respect to sensitive attributes.
+* **Fair Backward Compatibility:** ensuring that the distribution of negative flips is not biased with respect to sensitive attributes. Metric we want to minimize. Note that in the code, Fair Backward Compatibility (FBC), can be also referred to as Unfair Regression (UR).
 
 ## Mitigation Models
-* **FBC-S**: joint optimization of B-ACC and FBC through multi-objective model selection 
+* **FBC-S**: joint optimization of balanced accuracy (B-ACC) and FBC through multi-objective model selection 
 * **FBC-D**: mitigation of FBC via the differentiable relaxation, also coupled with multi-objective model selection.
-* **FBC-C**: mitigation of FBC via the convex relaxation, combined with multi-objective model selection. (SVM only)
+* **FBC-C**: mitigation of FBC via the convex relaxation, combined with multi-objective model selection, (SVM only).
 
 
 ## Repository Structure
 The project is organized into two main modules, each containing its own data handling, configuration, and execution logic:
 
-* **/shallow-fair-learning**: FBC implementation for traditional "shallow" models (SVM and XGBoost).
+* **/shallow-fair-learning**: FBC implementation for traditional "shallow" models (we use SVM and XGBoost).
     * `main.py`:  entry point for running experimental sweeps across datasets and seeds.
     * `runner.py`: training of legacy models ($f_{old}$) and the application of FBC mitigation for new models ($f_{new}$).
     * `engines.py`: mathematical implementation of FBC-S, FBC-D, and FBC-C.
     * `config.py`: defines hyperparameter grids and experiment settings.
     * `utils/`: helper scripts for data preprocessing and calculation of metrics.
 
-* **/deep-fair-learning**: FBC implementation for Neural Networks.
+* **/deep-fair-learning**: FBC implementation for Neural Networks (we use ResNet18 and ResNet50 architectures).
     * `main.py`: execution script for training and evaluating.
     * `cli.py`: command-line interface for managing experiment arguments, hyperparameters, and runtime settings.
     * `data_loader.py`: specialized data handling for the tested datasets.
@@ -39,6 +39,8 @@ The project is organized into two main modules, each containing its own data han
 **Note on Gurobi License**
 The `FBC-C` engine in the shallow module requires a valid Gurobi license. If no license is detected, the script will skip `FBC-C` and run the remaining methods. More information in [Gurobi Licenses](https://www.gurobi.com/downloads/).
 
+**Note for Usage and Logging**: we use Weights & Biases for experiment tracking. If you do not have an account, you can run the code in offline mode by setting export WANDB_MODE=offline in your terminal.
+
 ## Data Acquisition
 
 Datasets are not hosted directly in this repository. Please download the datasets from the sources below and place them in the corresponding `data/` folders.
@@ -48,7 +50,7 @@ The following tabular datasets are used in the `shallow-fair-learning` module. M
 
 * **German Credit**: [Download from UCI](https://archive.ics.uci.edu/ml/datasets/statlog+(german+credit+data))
 * **Arrhythmia**: [Download from UCI](https://archive.ics.uci.edu/ml/datasets/Arrhythmia)
-* **COMPAS**: [Download from ProPublica GitHub](https://github.com/propublica/compas-analysis) (Use `compas-scores-two-years.csv`)
+* **COMPAS**: [Download from ProPublica GitHub](https://github.com/propublica/compas-analysis)
 * **Adult**: [Download from UCI](https://archive.ics.uci.edu/ml/datasets/Adult)
 * **Student Performance**: [Download from UCI](https://archive.ics.uci.edu/ml/datasets/Student+Performance)
 * **Bank Marketing**: [Download from UCI](https://archive.ics.uci.edu/ml/datasets/Bank+Marketing)
@@ -80,17 +82,18 @@ The `deep-fair-learning` module utilizes larger image and clinical datasets:
     conda activate fair-backward
     ```
 3. **How to Run:**
-Shallow Experiments
+
+* Shallow Experiments
     ```
     bash
     cd shallow-fair-learning
     python main.py
     ```
-Deep Learning Experiments
+* Deep Learning Experiments
     ```
     bash
     cd deep-fair-learning
-    python main.py
+    python main.py --dataset dataset_name
     ```
 
 ## **Citation**
