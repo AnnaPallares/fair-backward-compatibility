@@ -35,27 +35,33 @@ def parse_args():
         type=str, 
         default="naive",
         choices=["naive", "fbc-s", "fbc-d", "fbc-c"],
-        help="FBC Mitigation strategy: naive (none), fbc-s (selection phase, 2-step cv), fbc-d (differentiable relaxation), fbc-c (convex relaxation)"
+        help="FBC Mitigation strategy: naive (none), fbc-s (model selection phase, 2-step cv), fbc-d (differentiable relaxation), fbc-c (convex relaxation)"
     )
 
     # Core Hyperparameters
     parser.add_argument('--seed',        type=int,   default=42)
-    parser.add_argument('--batch_size',  type=int,   default=32)
-    parser.add_argument('--epochs',      type=int,   default=25)
-    parser.add_argument('--lr',          type=float, default=1e-4)
     parser.add_argument('--subset_frac', type=float, default=0.2)
     parser.add_argument('--folds',       type=int,   default=5)
+    parser.add_argument('--epochs',      type=int,   default=25)
+
+
+    # Fixed hyperparameters for Baseline mdoels
+    parser.add_argument('--batch_size',  type=int,   default=32)
+    parser.add_argument('--lr',          type=float, default=1e-4)
+
 
     # FBC Specific Configurations
-    parser.add_argument('--sensitive_attribute', type=str, default=None, choices=["gender", "race"])
+    parser.add_argument('--sensitive_attribute', type=str, default=None, choices=["gender", "race"]) # only needed for FairFace and UTKFace datasets
     parser.add_argument('--acc_threshold',       type=float, default=0.1)
-    parser.add_argument('--nf_type',             choices=['all','positive','negative'], default='all', help="all=DP, positive/negative=EO") 
+    parser.add_argument('--nf_type',             choices=['all','positive','negative'], default='all', help="Fairness definition: all=DP, positive/negative=EO") 
 
     # Internal logic flags (set automatically by scenario, but available for override)
-    parser.add_argument('--double_step', type=str2bool, nargs='?', const=True, default=False)
-    parser.add_argument('--use_weights', type=str2bool, nargs='?', const=True, default=False)
-    parser.add_argument('--mitig2b',     type=str2bool, nargs='?', const=True, default=False)
-    parser.add_argument('--fine_tune',   type=str2bool, nargs='?', const=True, default=False)
+    parser.add_argument('--double_step', type=str2bool, nargs='?', const=True, default=False) # FBC-S
+    parser.add_argument('--use_weights', type=str2bool, nargs='?', const=True, default=False) # FBC-D
+    parser.add_argument('--mitig2b',     type=str2bool, nargs='?', const=True, default=False) # FBC-C
+    parser.add_argument('--fine_tune',   type=str2bool, nargs='?', const=True, default=False) # True in all new and fair models
+    parser.add_argument('--augment',    type=str2bool, nargs='?', const=True, default=False) # data augmentation for specific cases
+
 
     # Cross-Validation Grids
     parser.add_argument('--lambda_vals',     type=float, nargs='+', default=list(np.logspace(-3, 2, 5)))
@@ -71,7 +77,6 @@ def parse_args():
     parser.add_argument('--project',    type=str, default='FBC_Project', help='Wandb project name')
     parser.add_argument('--exp_name',   type=str, default=None)
     parser.add_argument('--output_dir', type=str, default="results/trained_models")
-    parser.add_argument('--augment',    type=str2bool, nargs='?', const=True, default=False)
 
     args = parser.parse_args()
     

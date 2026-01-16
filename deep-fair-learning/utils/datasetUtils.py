@@ -9,6 +9,7 @@ def _parse_and_augment(img, augment):
     return img
 
 def make_baseline_dataset(df, batch_size, seed, preprocess_fn, image_size, augment=False):
+    # Small dataset (for baseline model) of same size as batch size, used for the proper old-new model comparison and NF metric aquisition
     ds = tf.data.Dataset.from_tensor_slices((df['file'].values, df['target'].values))
     
     def _map(path, label):
@@ -24,6 +25,7 @@ def make_baseline_dataset(df, batch_size, seed, preprocess_fn, image_size, augme
               .prefetch(tf.data.AUTOTUNE))
 
 def make_fair_dataset(df, bs, seed, pre_fn, img_size, augment=False):
+    # Small dataset (for new model) of same size as batch size, used for the proper old-new model comparison and NF metric aquisition
     # Pass 4 inputs: image path, true label, old prediction, and sensitive attribute
     ds = tf.data.Dataset.from_tensor_slices((
         df['file'].values, 
@@ -37,7 +39,6 @@ def make_fair_dataset(df, bs, seed, pre_fn, img_size, augment=False):
         img = tf.image.decode_jpeg(img, channels=3)
         img = tf.image.resize(img, img_size)
         img = pre_fn(_parse_and_augment(img, augment))
-        # Structure matches FairModel.train_step expectation: ((img, y_old, s), y_true)
         return (img, y_old, s), y
 
     return (ds.map(_map, num_parallel_calls=tf.data.AUTOTUNE)

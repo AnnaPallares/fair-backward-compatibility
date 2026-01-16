@@ -9,18 +9,18 @@ def negativeFlip_rate(y_true, y_pred_old, y_pred_new, sens_attr, NFtype='all'):
     y_new = np.array(y_pred_new).flatten()
     s = np.array(sens_attr).flatten()
 
-    # Define the condition for the ground truth (e.g., only positive samples)
+    # Define type of fairness (i.e., all samples for DP, positive/negative for EO)
     if NFtype == "positive":
         subset_mask = (y_true == 1)
     elif NFtype == "negative":
         subset_mask = (y_true == 0)
     else:
-        subset_mask = np.ones_like(y_true, dtype=bool)
+        subset_mask = np.ones_like(y_true, dtype=bool) 
 
-    # A 'Negative Flip' candidate is a sample the old model got CORRECT
+    # A 'Negative Flip' candidate is a sample the old model got correct
     correct_old_mask = (y_old == y_true) & subset_mask
     
-    # A 'Negative Flip' occurs if the new model gets that same sample WRONG
+    # A 'Negative Flip' occurs if the new model gets that same sample wrong
     nf_mask = correct_old_mask & (y_new != y_true)
 
     # Group masks
@@ -42,7 +42,8 @@ def negativeFlip_rate(y_true, y_pred_old, y_pred_new, sens_attr, NFtype='all'):
     }
 
 def get_sensitive_target(y_true, y_pred_old, y_pred_new, sens_attr, NFtype):
-    """Identifies which group (0 or 1) is suffering more from backward incompatibility."""
+    """Identifies which group (0 or 1) is suffering more from backward incompatibility, used to weighten in the FBC-D relax.
+    """
     stats = negativeFlip_rate(y_true, y_pred_old, y_pred_new, sens_attr, NFtype)
     nfr_map = {0: stats["sensitive NF rate"], 1: stats["non-sensitive NF rate"]}
     # Target the group with the highest NFR for mitigation

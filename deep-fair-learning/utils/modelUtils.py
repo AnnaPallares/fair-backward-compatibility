@@ -1,7 +1,8 @@
 import keras_hub
 from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnet50_preprocess
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess
-#from tensorflow.keras.applications.resnet import preprocess_input as resnet18_preprocess
+
+# If testing other model architectures, add its preprocessing here
 
 from models.model_builder import (
     build_model_resnet50,

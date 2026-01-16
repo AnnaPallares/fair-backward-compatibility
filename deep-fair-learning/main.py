@@ -1,13 +1,18 @@
 import os
+import wandb
 import sys
 import datetime
 import tensorflow as tf
 
-# Ensure src is in the path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from cli import parse_args
 from training.trainer import run_experiment
+
+wandb.init(
+    project="fair-backward-compatibility",
+    mode="offline" if os.environ.get("WANDB_API_KEY") is None else "online"
+)
 
 def setup_gpu():
     gpus = tf.config.experimental.list_physical_devices('GPU')

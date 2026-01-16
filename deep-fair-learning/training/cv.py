@@ -14,14 +14,13 @@ from utils.fairnessUtils import negativeFlip_rate
 def cvFair_double_step(df, lambda_vals, lr_vals, batch_size_vals, threshold, target_group,
                         nf_type, args, builder, pre_fn, img_size):
     """
-    Implements the Double-Step Cross-Validation strategy from the paper:
+    Implements the Double-Step Cross-Validation strategy (mitigation FBC-S) from the paper:
     Step 1: Grid search over Lambda (constraint weight), LR, and Batch Size.
     Step 2: Filter models within a tolerable accuracy drop (threshold) of the max accuracy.
-    Step 3: Select the candidate with the lowest Unfair Regression (UR), namely the FBC.
+    Step 3: Select the candidate with the lowest Unfair Regression (UR), namely FBC.
     """
 
     # Define hyperparameter grid based on the chosen FBC scenario
-    # FBC-D and FBC-C typically vary Lambda; Naive/FBC-S might use a subset.
     if args.use_weights or args.mitig2b:
         param_grid = {
             'lambda':        lambda_vals,
@@ -29,7 +28,7 @@ def cvFair_double_step(df, lambda_vals, lr_vals, batch_size_vals, threshold, tar
             'batch_size':    batch_size_vals
         }
     else:
-        # For Naive or standard updates, lambda might be fixed at 0 or a constant
+        # For Naive or standard updates, lambda unused
         param_grid = {
             'lambda':        [0.0], 
             'learning_rate': lr_vals,
@@ -114,7 +113,7 @@ def cvFair_double_step(df, lambda_vals, lr_vals, batch_size_vals, threshold, tar
     # 1. Find max accuracy across all combos
     max_acc = df_results['mean_acc'].max()
     
-    # 2. Define the accuracy 'floor' (e.g., within 10% of max_acc if threshold is 0.1)
+    # 2. Define the minimum accuracy  (e.g., within 10% of max_acc if threshold is 0.1)
     acc_floor = max_acc * (1.0 - threshold)
     
     # 3. Filter candidates that meet the accuracy requirement

@@ -9,13 +9,13 @@ from sklearn.metrics import confusion_matrix
 from tqdm.keras import TqdmCallback
 from wandb.integration.keras import WandbMetricsLogger
 
-from utils.datasetUtils import make_baseline_dataset, make_fair_dataset, make_image_ds
+from utils.datasetUtils import make_baseline_dataset, make_image_ds
 from training.cv import cvFair_double_step
 from utils.fairnessUtils import get_sensitive_target
 from utils.loggingUtils import save_metrics_json
 
 def print_balanced_details(y_true, y_pred, model_label="Model"):
-    """Prints specificity, sensitivity, and balanced accuracy for medical/fairness contexts."""
+    """Prints specificity, sensitivity, and balanced accuracy for fairness contexts."""
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
     
     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
@@ -74,7 +74,6 @@ def run_baselines(args, train_df, val_df, builder_old, pre_fn_old, builder_new, 
     val_imgs_new = make_image_ds(val_df['file'].values, args.batch_size, pre_fn_new, args.image_size)
     train_imgs_old = make_image_ds(train_df['file'].values, args.batch_size, pre_fn_old, args.image_size)
 
-    # Predictions for FBC Target Identification
     train_df['y_old_pred'] = (model_old.predict(train_imgs_old) > 0.5).astype(int).flatten()
     val_df['y_old_pred']   = (model_old.predict(val_imgs_old) > 0.5).astype(int).flatten()
     y_new_val              = (model_new.predict(val_imgs_new) > 0.5).astype(int).flatten()
@@ -88,7 +87,7 @@ def run_baselines(args, train_df, val_df, builder_old, pre_fn_old, builder_new, 
         val_df['sensitive'].values, args.nf_type
     )
     
-    # Unfair Regression (UR) (same as FBC metric)
+    # Unfair Regression (FBC)
     ur_disparity = abs(baseline_metrics[0] - baseline_metrics[1])
     wandb.log({"initial_UR_disparity": ur_disparity})
     wandb.finish()

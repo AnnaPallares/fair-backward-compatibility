@@ -27,7 +27,7 @@ def run_experiment(args):
     Orchestrates the FBC experiment: 
     1. Data Loading/Augmentation
     2. Baseline Training (Naive update)
-    3. Cross-validation for FBC parameters
+    3. Cross-validation
     4. Final Fair Model training
     """
     
@@ -59,7 +59,7 @@ def run_experiment(args):
     builder_new, pre_fn_new = get_builder_and_preproc(args.arch_new)
 
     # Define paths for baseline models
-    # Note: These are stored in a 'baselines' subfolder shared across seeds for efficiency
+    # Note: these are stored in a 'baselines' subfolder shared across seeds for efficiency
     baseline_dir = os.path.join(os.path.dirname(args.output_dir), 'baselines')
     os.makedirs(baseline_dir, exist_ok=True)
     
@@ -110,8 +110,6 @@ def run_experiment(args):
 
     # --- STAGE 3: Final FBC Model Training ---
     if args.stage in ('mitigation', 'all'):
-        # Pass the renamed mitig2b -> mitig2b (keeping internal name for now or refactoring logging)
-        # Note: log_final_fair_model should ideally be updated to use the new nomenclature in its logs
         log_final_fair_model(
             args        = args,
             project     = args.project,

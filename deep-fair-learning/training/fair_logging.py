@@ -54,9 +54,9 @@ def log_final_fair_model(
     # 2) build & compile model
     base_model = builder(input_shape=image_size + (3,))
 
-    # Fine-tuning logic: Correctly toggles trainability
+    # Fine-tuning logic: 
     if args.fine_tune:
-        base_model.trainable = True # Enable global switch
+        base_model.trainable = True 
         
         # Freeze all layers first
         for layer in base_model.layers:
@@ -67,7 +67,7 @@ def log_final_fair_model(
             if not isinstance(layer, tf.keras.layers.BatchNormalization):
                 layer.trainable = True
 
-    # Log trainable layers info (useful for debugging)
+    # Log trainable layers info 
     trainable_count = sum(1 for layer in base_model.layers if layer.trainable)
     wandb.log({"trainable_layers_count": trainable_count})
 
@@ -100,7 +100,6 @@ def log_final_fair_model(
     ]
 
     # 4) fit
-    # Note: Use args.augment to stay consistent with your DDI auto-logic
     ds_tr = make_fair_dataset(train_df, best_bs, seed, pre_fn, image_size, augment=args.augment)
     ds_vl = make_fair_dataset(val_df,   best_bs, seed, pre_fn, image_size, augment=False)
 

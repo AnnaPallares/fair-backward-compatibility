@@ -7,11 +7,11 @@ class FairModel(tf.keras.Model):
         
         Args:
             base_model: Keras model outputting sigmoid probabilities.
-            target_group: The sensitive group (0 or 1) prone to unfair regression.
-            lambda_: Weight for the FBC penalty.
-            NFtype: 'all', 'positive', or 'negative' flips.
-            use_weights: Boolean for FBC-D (Discriminated) strategy.
-            mitig2b: Boolean for FBC-C (Combined/Conditional) strategy.
+            target_group:  sensitive group (0 or 1) prone to unfair regression.
+            lambda_: weight for the FBC penalty.
+            NFtype: 'all' for DP, 'positive', or 'negative' for EO.
+            use_weights: boolean for accounting for differentiable relaxation, FBC-D .
+            mitig2b: boolean for accounting for convex relaxation, FBC-C.
         """
         super().__init__()
         self.base           = base_model
@@ -54,7 +54,7 @@ class FairModel(tf.keras.Model):
         y_pred_clipped = tf.clip_by_value(y_pred, eps, 1.0 - eps)
         bce = -(y_true * tf.math.log(y_pred_clipped) + (1 - y_true) * tf.math.log(1 - y_pred_clipped))
 
-        # Identify potential Negative Flips (NF)
+        # Identify Negative Flips (NF)
         if self.NFtype == "positive":
             flip_mask = tf.logical_and(tf.equal(y_old_bin, y_true), tf.equal(y_true, 1.0))
         elif self.NFtype == "negative":
@@ -64,7 +64,7 @@ class FairModel(tf.keras.Model):
         
         flip_mask = tf.cast(flip_mask, tf.float32)
 
-        # FBC Strategy Selection
+        # FBC mitigation Selection
         if self.fbc_d_mode:
             # FBC-D: Weight binary cross-entropy specifically for the sensitive target group
             target_mask = tf.cast(tf.equal(s, self.target_group), tf.float32)
@@ -73,7 +73,7 @@ class FairModel(tf.keras.Model):
             return tf.reduce_mean(total_bce)
 
         elif self.fbc_c_mode:
-            # FBC-C: Squared difference between group-wise incompatibility losses
+            # FBC-C: Squared difference between group-wise losses
             mask_s0 = tf.cast(tf.equal(s, 0), tf.float32)
             mask_s1 = tf.cast(tf.equal(s, 1), tf.float32)
             
@@ -84,8 +84,8 @@ class FairModel(tf.keras.Model):
             return tf.reduce_mean(bce) + diff_penalty
              
         else:
-            # FBC-S: Standard/Strict compatibility (applied to all)
-            return tf.reduce_mean(bce * (1.0 + (flip_mask * self.lambda_)))
+            # Standard Binary Cross Entropy
+            return tf.reduce_mean(bce)
 
     def train_step(self, data):
         (img, y_old, s), y_true = data
@@ -102,7 +102,7 @@ class FairModel(tf.keras.Model):
         self.acc_tracker.update_state(y_true, y_pred)
         self.auc_tracker.update_state(y_true, y_pred)
         
-        # Calculate and track current batch Unfair Regression
+        # Calculate and track current batch Unfair Regression (i.e. FBC)
         self._update_ur_metric(y_true, y_pred, y_old, s)
 
         return {m.name: m.result() for m in self.metrics}
@@ -120,7 +120,7 @@ class FairModel(tf.keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
     def _update_ur_metric(self, y_true, y_pred, y_old, s):
-        """Internal helper to track Unfair Regression during training."""
+        """Internal helper to track FBC during training."""
         y_old = tf.cast(y_old, tf.float32)
         y_pred = tf.cast(y_pred, tf.float32)
         y_true = tf.cast(y_true, tf.float32)

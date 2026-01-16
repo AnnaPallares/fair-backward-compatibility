@@ -14,7 +14,7 @@ def build_model_resnet50(input_shape, fine_tune_at=None):
         include_top=False,
         weights='imagenet',
         input_shape=input_shape,
-        pooling='avg' # Directly gives a 2048-d vector
+        pooling='avg' 
     )
     
     # Standard Transfer Learning: Freeze the base initially
@@ -24,11 +24,10 @@ def build_model_resnet50(input_shape, fine_tune_at=None):
         base.trainable = True
         for layer in base.layers[:fine_tune_at]:
             # Keep early layers frozen (generic features)
-            # UNLESS they are BatchNormalization (best practice to keep BN frozen during fine-tuning)
+            # Unless they are BatchNormalization (comon practice to keep BN frozen during fine-tuning)
             layer.trainable = False
 
     x = base.output
-    # The 'pred' name is used by your trainer to identify the output head
     outputs = layers.Dense(1, activation='sigmoid', name='pred')(x)
 
     return Model(inputs=base.input, outputs=outputs, name="ResNet50_FBC")
@@ -36,7 +35,6 @@ def build_model_resnet50(input_shape, fine_tune_at=None):
 def build_model_resnet18(input_shape):
     """
     ResNet18 via KerasHub. 
-    Note: ResNet18 is often better for smaller datasets (like Fitzpatrick17k).
     """
     base = keras_hub.models.Backbone.from_preset(
         "resnet_18_imagenet",
@@ -45,7 +43,6 @@ def build_model_resnet18(input_shape):
     )
     base.trainable = False
 
-    # KerasHub backbones return a dictionary of feature maps; we take the last one
     x = base.output
     if isinstance(x, dict):
         x = list(x.values())[-1]
