@@ -20,10 +20,7 @@ def engine_fbc_s(X, y, s, f_old, model_type, param_grid, kfold, NFtype, CVmetric
     
     # Step 1: Maximize Accuracy
     if model_type == 'svm':
-        svc_param_grid = []
-        for kernel, grid in param_grid.items():
-            pg = grid.copy(); pg['kernel'] = [kernel]
-            svc_param_grid.append(pg)
+        svc_param_grid = [{'kernel': [k], **v} for k, v in param_grid.items()]
         base_model = SVC()
         gs = GridSearchCV(base_model, svc_param_grid, scoring=CVmetric, cv=kfold, n_jobs=n_jobs)
     else:

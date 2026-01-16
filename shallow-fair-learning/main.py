@@ -13,7 +13,7 @@ def main():
     # Define the experiments here
     scenarios = [
         
-        ('xgb', 'xgb', 'fbc-s'),
+        ('svm', 'svm', 'fbc-s'),
     ]
     
     results = []
@@ -34,8 +34,12 @@ def main():
             end_time = time.time()
             
             print(f"--- Finished in {((end_time - start_time)/60):.2f} minutes ---")
+
+            name_old = f"{m_old}_{config['kernel_old']}" if m_old == 'svm' else m_old
+            name_new = f"{m_new}_{config['kernel_new']}" if m_new == 'svm' else m_new
+            scenario_name = f"{name_old}-{name_new}"
             
-            results.append({**res, 'dataset': ds_name, 'scenario': f"{m_old}_{m_new}", 'method': method})
+            results.append({**res, 'dataset': ds_name, 'scenario': scenario_name, 'method': method})
 
     pd.DataFrame(results).to_csv('experiment_results.csv', index=False)
     print("\nExperiments finished. Data saved to experiment_results.csv")

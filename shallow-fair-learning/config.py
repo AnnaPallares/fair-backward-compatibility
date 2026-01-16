@@ -19,14 +19,18 @@ def get_grid(model_type):
             'tree_method': ['hist'] # For faster training
         }
 
-def get_default_config(m_old, m_new, method):
-    """Generates the full experimental setup."""
+def get_default_config(m_old, m_new, method, k_old='linear', k_new='rbf'):
+    """
+    Generates the full experimental setup.
+    """
     return {
         'seed': 42, 
         'size0': 0.2, 
         'size1': 1.0,
         'model_old': m_old, 
+        'kernel_old': k_old,  
         'model_new': m_new, 
+        'kernel_new': k_new,  
         'method': method,
         'l_values': np.logspace(-3, 2, 5),
         'NFtype': 'all', 

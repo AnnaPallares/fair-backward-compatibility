@@ -22,10 +22,12 @@ def run_fbc_experiment(dataset_name, X, y, config):
     kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=config['seed'])
 
     # 2. Train f_old
-    print(f"--- Training f_old ({config['model_old']}) ---")
-
+    print(f"--- Training f_old ({config['model_old']} - {config['kernel_old']}) ---")
+    
     if config['model_old'] == 'svm':
-        svc_grid = [{'kernel': [k], **v} for k, v in config['param_grid_old'].items()]
+        # Select only the grid corresponding to the chosen kernel
+        k_old = config['kernel_old']
+        svc_grid = [{'kernel': [k_old], **config['param_grid_old'][k_old]}]
         base_old = SVC()
     else:
         svc_grid = config['param_grid_old']
@@ -34,10 +36,13 @@ def run_fbc_experiment(dataset_name, X, y, config):
     f_old = GridSearchCV(base_old, svc_grid, scoring=config['CVmetric'], cv=kfold, n_jobs=config['n_jobs'])
     f_old.fit(data['X0'], data['y0'])
     
-    # 3. Train f_new (The Naive Model)
-    print(f"--- Training f_new ({config['model_new']}) ---")
+    # 3. Train f_new 
+    print(f"--- Training f_new ({config['model_new']} - {config['kernel_new']}) ---")
+    
     if config['model_new'] == 'svm':
-        svc_grid_new = [{'kernel': [k], **v} for k, v in config['param_grid_new'].items()]
+        # Select only the grid corresponding to the chosen kernel
+        k_new = config['kernel_new']
+        svc_grid_new = [{'kernel': [k_new], **config['param_grid_new'][k_new]}]
         base_new = SVC()
     else:
         svc_grid_new = config['param_grid_new']
@@ -50,9 +55,16 @@ def run_fbc_experiment(dataset_name, X, y, config):
     print(f"--- Running Mitigation: {config['method']} ---")
     f_mitig = None
     
+    # Prepare the specific grid for the NEW model based on user kernel choice
+    if config['model_new'] == 'svm':
+        current_k = config['kernel_new']
+        mitig_grid = {current_k: config['param_grid_new'][current_k]}
+    else:
+        mitig_grid = config['param_grid_new']['xgb']
+
     if config['method'] == 'fbc-s':
         best_p = engine_fbc_s(data['X1'], data['y1'], data['s1'], f_old, 
-                              config['model_new'], config['param_grid_new'], 
+                              config['model_new'], mitig_grid, 
                               kfold, config['NFtype'], config['CVmetric'], 
                               config['p_thresh'], config['n_jobs'])
         f_mitig = SVC(**best_p) if config['model_new'] == 'svm' else XGBClassifier(**best_p)
@@ -60,7 +72,7 @@ def run_fbc_experiment(dataset_name, X, y, config):
 
     elif config['method'] == 'fbc-d':
         best = engine_fbc_d(data['X1'], data['y1'], data['s1'], f_old, 
-                            config['model_new'], config['param_grid_new'], 
+                            config['model_new'], mitig_grid, 
                             config['l_values'], kfold, config['NFtype'], 
                             config['CVmetric'], config['p_thresh'], config['n_jobs'])
         
@@ -77,9 +89,8 @@ def run_fbc_experiment(dataset_name, X, y, config):
         f_mitig.fit(data['X1'], data['y1'], sample_weight=weights)
 
     elif config['method'] == 'fbc-c':
-        k_name = f_new.best_params_['kernel']
         f_mitig_dict = engine_fbc_c(data['X1'], data['y1'], data['s1'], f_old, 
-                                   k_name, f_new.best_params_, 
+                                   config['kernel_new'], f_new.best_params_, 
                                    config['NFtype'])
         
         from engine import linear_kernel, rbf_kernel
