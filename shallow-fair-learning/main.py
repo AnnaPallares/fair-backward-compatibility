@@ -12,8 +12,12 @@ def main():
     
     # Define the experiments here
     scenarios = [
-        
         ('svm', 'svm', 'fbc-s'),
+        ('svm', 'svm', 'fbc-d'),
+        ('svm', 'svm', 'fbc-c'),
+        ('svm', 'xgb', 'fbc-s'),
+        ('svm', 'xgb', 'fbc-d'),
+        ('svm', 'xgb', 'fbc-c'),
     ]
     
     results = []

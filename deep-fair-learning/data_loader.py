@@ -78,9 +78,9 @@ def load_fitzpatrick_data(base_dir, seed, sensitive_attribute):
         raise FileNotFoundError(f"CSV file not found at {csv_path}")
 
     df = pd.read_csv(csv_path)
-    df['file'] = df['file'].apply(lambda x: os.path.join(base_dir, os.path.normpath(x)))
+    df['file'] = df['filename'].apply(lambda x: os.path.join(base_dir, "images", x))
     df = df.rename(columns={"diagnosis_label": "target", "tone_label": "sensitive"})
-    df = df[df['file'].apply(os.path.exists)] 
+    df = df[df['file'].apply(os.path.exists)]
     print(df.shape)
 
     train_df, val_df = train_test_split(df, test_size=0.2, stratify=df["target"], random_state=seed)

@@ -52,7 +52,7 @@ def parse_args():
 
     # FBC Specific Configurations
     parser.add_argument('--sensitive_attribute', type=str, default=None, choices=["gender", "race"]) # only needed for FairFace and UTKFace datasets
-    parser.add_argument('--acc_threshold',       type=float, default=0.1)
+    parser.add_argument('--acc_threshold',       type=float, default=0.10)
     parser.add_argument('--nf_type',             choices=['all','positive','negative'], default='all', help="Fairness definition: all=DP, positive/negative=EO") 
 
     # Internal logic flags (set automatically by scenario, but available for override)
@@ -69,14 +69,14 @@ def parse_args():
     parser.add_argument('--lr_vals',         type=float, nargs='+', default=[1e-3, 1e-4, 1e-5])    
 
     # Execution Flow
-    parser.add_argument('--stage', choices=['baseline','mitigation','all'], default='all')
-    parser.add_argument('--arch_old', choices=['resnet50', 'mobilenetv2', 'resnet18'], default='resnet18')
-    parser.add_argument('--arch_new', choices=['resnet18', 'resnet50', 'mobilenetv2'], default='resnet50')
+    parser.add_argument('--stage', choices=['baseline','mitigation','cv','final','all'], default='all')
+    parser.add_argument('--arch_old', choices=['resnet50', 'mobilenetv2', 'resnet18', 'vit-small'], default='resnet18')
+    parser.add_argument('--arch_new', choices=['resnet18', 'resnet50', 'mobilenetv2', 'vit-small'], default='resnet50')
 
     # Logging & Outputs
     parser.add_argument('--project',    type=str, default='FBC_Project', help='Wandb project name')
     parser.add_argument('--exp_name',   type=str, default=None)
-    parser.add_argument('--output_dir', type=str, default="results/trained_models")
+    parser.add_argument('--output_dir', type=str, default="results/rebuttal")
 
     args = parser.parse_args()
     

@@ -9,7 +9,7 @@ class FairModel(tf.keras.Model):
             base_model: Keras model outputting sigmoid probabilities.
             target_group:  sensitive group (0 or 1) prone to unfair regression.
             lambda_: weight for the FBC penalty.
-            NFtype: 'all' for DP, 'positive', or 'negative' for EO.
+            NFtype: 'all' for DP, 'positive', or 'negative' for EO (check labels to set this correctly).
             use_weights: boolean for accounting for differentiable relaxation, FBC-D .
             mitig2b: boolean for accounting for convex relaxation, FBC-C.
         """
@@ -66,14 +66,14 @@ class FairModel(tf.keras.Model):
 
         # FBC mitigation Selection
         if self.fbc_d_mode:
-            # FBC-D: Weight binary cross-entropy specifically for the sensitive target group
+            # FBC-D: Differentiable Relaxation. Weight binary cross-entropy specifically for the sensitive target group
             target_mask = tf.cast(tf.equal(s, self.target_group), tf.float32)
             penalty = flip_mask * target_mask * self.lambda_
             total_bce = (1.0 + penalty) * bce
             return tf.reduce_mean(total_bce)
 
         elif self.fbc_c_mode:
-            # FBC-C: Squared difference between group-wise losses
+            # FBC-C: Convex Relaxation. Squared difference between group-wise losses
             mask_s0 = tf.cast(tf.equal(s, 0), tf.float32)
             mask_s1 = tf.cast(tf.equal(s, 1), tf.float32)
             

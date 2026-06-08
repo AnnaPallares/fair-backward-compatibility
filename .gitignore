@@ -11,10 +11,17 @@ __pycache__/
 
 agents.sh
 launch_agents.sh
+run_experiments.sh
+run_experiments_parallel.sh
+benchmark.sh
+run_benchmarks.py
+aggregate_results.py
 
 sweeps/
 trained_models/
 results/
+rebuttal/
 plots/
 wandb/
+
 git.txt

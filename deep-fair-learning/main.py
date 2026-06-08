@@ -27,7 +27,7 @@ def main():
     setup_gpu()
     args = parse_args()
 
-    # Mapping Paper Terminology to Internal Logic
+    # Mapping Manuscript Terminology to Internal Logic
     scenario_map = {
         "naive": {"double_step": False, "use_weights": False, "mitig2b": False},
         "fbc-s": {"double_step": True,  "use_weights": False, "mitig2b": False},
@@ -41,7 +41,7 @@ def main():
         args.use_weights = config["use_weights"]
         args.mitig2b     = config["mitig2b"]
 
-    # Generate experiment name if not provided
+    # Wandb setup (not needed)
     if args.exp_name is None:
         ts = datetime.datetime.now().strftime("%y%m%d_%H%M")
         args.exp_name = (
@@ -50,13 +50,11 @@ def main():
             f"_seed{args.seed}_{ts}"
         )
 
-    # Finalize output directory structure
     run_id = f"seed-{args.seed}"
     args.run_id = run_id
-    args.output_dir = os.path.join(args.output_dir, args.dataset, run_id)
+    args.output_dir = os.path.join(args.output_dir, args.dataset, args.scenario, run_id)
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Kick off the experiment
     run_experiment(args)
 
 if __name__ == "__main__":

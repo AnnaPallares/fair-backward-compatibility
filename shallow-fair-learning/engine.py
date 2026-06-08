@@ -1,6 +1,6 @@
 import numpy as np
 import logging
-from sklearn.model_selection import ParameterGrid, GridSearchCV
+from sklearn.model_selection import ParameterGrid, GridSearchCV, StratifiedKFold
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
@@ -12,42 +12,73 @@ METRIC_MAP = {
     "balanced_accuracy": balanced_accuracy_score
 }
 
+from joblib import Parallel, delayed
+
+def evaluate_candidate_s(p, X_arr, y_arr, s_arr, f_old, model_type, n_splits, cv_seed, NFtype, metric_fn):
+    """Evaluate a single hyperparameter config: compute BOTH accuracy and NFD in one CV pass."""
+    kfold = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=cv_seed)
+    fold_accs, fold_nfds = [], []
+    for tr_idx, vl_idx in kfold.split(X_arr, y_arr):
+        clf = SVC(**p) if model_type == 'svm' else XGBClassifier(**p)
+        clf.fit(X_arr[tr_idx], y_arr[tr_idx])
+        y_pred = clf.predict(X_arr[vl_idx])
+        y_old = f_old.predict(X_arr[vl_idx])
+        fold_accs.append(metric_fn(y_arr[vl_idx], y_pred))
+        _, _, _, nfr0, nfr1 = neg_flip_cond(y_arr[vl_idx], y_old, y_pred, s_arr[vl_idx], NFtype)
+        fold_nfds.append(abs(nfr1 - nfr0))
+    return np.mean(fold_accs), np.mean(fold_nfds), p
+
 def engine_fbc_s(X, y, s, f_old, model_type, param_grid, kfold, NFtype, CVmetric, p_thresh, n_jobs):
     """
-    FBC-S: Selects best hyperparameters to maximize B-ACC while minimize NFD.
+    FBC-S: Single CV pass computes accuracy and NFD simultaneously.
+    Step 1: Filter candidates by accuracy threshold.
+    Step 2: PICK (not re-CV) the candidate with the lowest NFD from the same CV results.
     """
     X_arr, y_arr, s_arr = np.asarray(X), np.asarray(y), np.asarray(s).astype(int)
-    
-    # Step 1: Maximize Accuracy
-    if model_type == 'svm':
-        svc_param_grid = [{'kernel': [k], **v} for k, v in param_grid.items()]
-        base_model = SVC()
-        gs = GridSearchCV(base_model, svc_param_grid, scoring=CVmetric, cv=kfold, n_jobs=n_jobs)
-    else:
-        base_model = XGBClassifier(n_jobs=n_jobs, tree_method="hist")
-        gs = GridSearchCV(base_model, param_grid, scoring=CVmetric, cv=kfold, n_jobs=n_jobs)
+    metric_fn = METRIC_MAP[CVmetric]
 
-    gs.fit(X, y)
-    cutoff = gs.best_score_ * (1 - p_thresh)
-    accepted = [p for p, sc in zip(gs.cv_results_['params'], gs.cv_results_['mean_test_score']) if sc >= cutoff]
-    
-    # Step 2: Minimize NFD
-    best_nfd, best_params = float('inf'), (accepted[0] if accepted else None)
-    for p in accepted:
-        fold_nfds = []
-        for tr_idx, vl_idx in kfold.split(X_arr, y_arr):
-            clf = SVC(**p) if model_type == 'svm' else XGBClassifier(**p, n_jobs=n_jobs)
-            clf.fit(X_arr[tr_idx], y_arr[tr_idx])
-            y_pred = clf.predict(X_arr[vl_idx])
-            y_old = f_old.predict(X_arr[vl_idx])
-            _, _, _, nfr0, nfr1 = neg_flip_cond(y_arr[vl_idx], y_old, y_pred, s_arr[vl_idx], NFtype)
-            fold_nfds.append(abs(nfr1 - nfr0))
-        
-        avg_nfd = np.mean(fold_nfds)
-        if avg_nfd < best_nfd:
-            best_nfd, best_params = avg_nfd, p
-            
+    # Build flat parameter grid
+    if model_type == 'svm':
+        flat_grid = [{'kernel': k, **p} for k, v in param_grid.items() for p in ParameterGrid(v)]
+    else:
+        flat_grid = list(ParameterGrid(param_grid))
+
+    # Single parallelized CV pass: compute both accuracy AND NFD for every candidate
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(evaluate_candidate_s)(p, X_arr, y_arr, s_arr, f_old, model_type,
+                                      kfold.n_splits, kfold.random_state, NFtype, metric_fn)
+        for p in flat_grid
+    )
+
+    # Step 1: apply accuracy threshold
+    max_acc = max(r[0] for r in results)
+    cutoff = max_acc * (1 - p_thresh)
+    accepted = [(acc, nfd, p) for acc, nfd, p in results if acc >= cutoff]
+
+    if not accepted:
+        return flat_grid[0]  # fallback: return first candidate
+
+    # Step 2: Pick the accepted candidate with the lowest NFD
+    _, _, best_params = min(accepted, key=lambda x: x[1])
     return best_params
+
+def evaluate_params_d(p, l1, ind_flip, X_arr, y_arr, s_arr, f_old, model_type, n_splits, cv_seed, NFtype, bool_fold, metric_fn, n_jobs):
+    # Create a fresh kfold inside each worker to avoid shared/stale state across parallel jobs
+    kfold = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=cv_seed)
+    w_full = np.ones_like(y_arr, dtype=float)
+    w_full[bool_fold & (s_arr == ind_flip)] += l1
+    
+    fold_accs, fold_nfds = [], []
+    for tr_idx, vl_idx in kfold.split(X_arr, y_arr):
+        model = SVC(**p) if model_type == 'svm' else XGBClassifier(**p, n_jobs=n_jobs)
+        model.fit(X_arr[tr_idx], y_arr[tr_idx], sample_weight=w_full[tr_idx])
+        y_pred = model.predict(X_arr[vl_idx])
+        y_old = f_old.predict(X_arr[vl_idx])
+        fold_accs.append(metric_fn(y_arr[vl_idx], y_pred))
+        _, _, _, nfr0, nfr1 = neg_flip_cond(y_arr[vl_idx], y_old, y_pred, s_arr[vl_idx], NFtype)
+        fold_nfds.append(abs(nfr1 - nfr0))
+    
+    return {'params': p, 'l1': l1, 'ind_flip': ind_flip, 'acc': np.mean(fold_accs), 'nfd': np.mean(fold_nfds)}
 
 def engine_fbc_d(X, y, s, f_old, model_type, param_grid, l_values, kfold, NFtype, CVmetric, p_thresh, n_jobs):
     """
@@ -71,33 +102,24 @@ def engine_fbc_d(X, y, s, f_old, model_type, param_grid, l_values, kfold, NFtype
     else:
         flat_grid = list(ParameterGrid(param_grid))
 
-    results = []
-    for p in flat_grid:
-        for l1 in l_values:
-            for ind_flip in [0, 1]:
-                w_full = np.ones_like(y_arr, dtype=float)
-                w_full[bool_fold & (s_arr == ind_flip)] += l1
-                
-                fold_accs, fold_nfds = [], []
-                for tr_idx, vl_idx in kfold.split(X_arr, y_arr):
-                    model = SVC(**p) if model_type == 'svm' else XGBClassifier(**p, n_jobs=n_jobs)
-                    model.fit(X_arr[tr_idx], y_arr[tr_idx], sample_weight=w_full[tr_idx])
-                    y_pred = model.predict(X_arr[vl_idx])
-                    y_old = f_old.predict(X_arr[vl_idx])
-                    fold_accs.append(metric_fn(y_arr[vl_idx], y_pred))
-                    _, _, _, nfr0, nfr1 = neg_flip_cond(y_arr[vl_idx], y_old, y_pred, s_arr[vl_idx], NFtype)
-                    fold_nfds.append(abs(nfr1 - nfr0))
-                
-                results.append({'params': p, 'l1': l1, 'ind_flip': ind_flip, 'acc': np.mean(fold_accs), 'nfd': np.mean(fold_nfds)})
+    # Parallelized sweep — pass n_splits and seed, not the kfold object, to avoid stale state
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(evaluate_params_d)(p, l1, ind_flip, X_arr, y_arr, s_arr, f_old, model_type,
+                                   kfold.n_splits, kfold.random_state, NFtype, bool_fold, metric_fn, 1)
+        for p in flat_grid
+        for l1 in l_values
+        for ind_flip in [0, 1]
+    )
 
     max_acc = max(r['acc'] for r in results)
     candidates = [r for r in results if r['acc'] >= max_acc * (1 - p_thresh)]
     return min(candidates, key=lambda x: x['nfd'])
 
+from sklearn.metrics.pairwise import rbf_kernel, linear_kernel
+
 # --- FBC-C Relaxation (SVM ONLY) ---
 try:
     from gurobipy import Model, GRB, quicksum
-    from sklearn.metrics.pairwise import rbf_kernel, linear_kernel
     GUROBI_AVAILABLE = True
 except ImportError:
     GUROBI_AVAILABLE = False

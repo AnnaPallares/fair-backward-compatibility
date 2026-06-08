@@ -15,12 +15,12 @@ dependencies:
   - tqdm
   - pyyaml
   - joblib
-  - gurobi::gurobi
+  - gurobi::gurobi=12.0
   - pillow
   - pip:
       - keras-hub
       - xgboost>=2.0.0
-      - tensorflow==2.16.2
+      - tensorflow[and-cuda]==2.16.2
       - keras==3.10.0
       - wandb
       - pydantic

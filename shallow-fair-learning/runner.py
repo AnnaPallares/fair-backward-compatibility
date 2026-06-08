@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from utils.metrics import neg_flip_cond
 from utils.data_preprocessing import prepare_data
 from engine import engine_fbc_s, engine_fbc_d, engine_fbc_c, METRIC_MAP
@@ -17,7 +17,7 @@ def run_fbc_experiment(dataset_name, X, y, config):
     """
     # 1. Data Preparation
     data = prepare_data(X, y, config['seed'], config['size0'], config['size1'], 
-                        dataset_name, config['model_new'])
+                        dataset_name, config['model_old'], config['model_new'])
     
     kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=config['seed'])
 
@@ -46,10 +46,14 @@ def run_fbc_experiment(dataset_name, X, y, config):
         base_new = SVC()
     else:
         svc_grid_new = config['param_grid_new']
-        base_new = XGBClassifier(n_jobs=config['n_jobs'], tree_method="hist")
+        base_new = XGBClassifier(n_jobs=1, tree_method="hist")
 
     f_new = GridSearchCV(base_new, svc_grid_new, scoring=config['CVmetric'], cv=kfold, n_jobs=config['n_jobs'])
+    
+    import time
+    start_naive = time.time()
     f_new.fit(data['X1'], data['y1'])
+    time_naive = time.time() - start_naive
 
     # 4. Mitigation Step
     print(f"--- Running Mitigation: {config['method']} ---")
@@ -60,8 +64,10 @@ def run_fbc_experiment(dataset_name, X, y, config):
         current_k = config['kernel_new']
         mitig_grid = {current_k: config['param_grid_new'][current_k]}
     else:
-        mitig_grid = config['param_grid_new']['xgb']
+        # For XGBoost, the grid is already flat
+        mitig_grid = config['param_grid_new']
 
+    start_mitig = time.time()
     if config['method'] == 'fbc-s':
         best_p = engine_fbc_s(data['X1'], data['y1'], data['s1'], f_old, 
                               config['model_new'], mitig_grid, 
@@ -89,8 +95,15 @@ def run_fbc_experiment(dataset_name, X, y, config):
         f_mitig.fit(data['X1'], data['y1'], sample_weight=weights)
 
     elif config['method'] == 'fbc-c':
+        # Step 1: Perform 2-step selection (FBC-S) to find best params for fairness
+        best_p = engine_fbc_s(data['X1'], data['y1'], data['s1'], f_old, 
+                              config['model_new'], mitig_grid, 
+                              kfold, config['NFtype'], config['CVmetric'], 
+                              config['p_thresh'], config['n_jobs'])
+        
+        # Step 2: Solve the fair-constrained optimization in Gurobi using those optimal params
         f_mitig_dict = engine_fbc_c(data['X1'], data['y1'], data['s1'], f_old, 
-                                   config['kernel_new'], f_new.best_params_, 
+                                   config['kernel_new'], best_p, 
                                    config['NFtype'])
         
         from engine import linear_kernel, rbf_kernel
@@ -103,6 +116,7 @@ def run_fbc_experiment(dataset_name, X, y, config):
             return np.where(raw >= 0, 1, 0)
         
         y_pred_mit = predict_c(data['X_te'])
+    time_mitig = time.time() - start_mitig
 
     # 5. Final Evaluation
     y_pred_old = f_old.predict(data['X_te'])
@@ -120,8 +134,13 @@ def run_fbc_experiment(dataset_name, X, y, config):
         'acc_old': accuracy_score(y_true, y_pred_old),
         'acc_new': accuracy_score(y_true, y_pred_new),
         'acc_mit': accuracy_score(y_true, y_pred_mit),
+        'bacc_old': balanced_accuracy_score(y_true, y_pred_old),
+        'bacc_new': balanced_accuracy_score(y_true, y_pred_new),
+        'bacc_mit': balanced_accuracy_score(y_true, y_pred_mit),
         'nfd_new': abs(res_new[4] - res_new[3]),
-        'nfd_mit': abs(res_mit[4] - res_mit[3])
+        'nfd_mit': abs(res_mit[4] - res_mit[3]),
+        'time_naive_s': time_naive,
+        'time_mitig_s': time_mitig
     }
     
     return results

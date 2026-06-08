@@ -29,9 +29,21 @@ def get_Xy(df, dataset_name):
     y = y.iloc[:, 1].astype(int) 
     return X, y
 
-def prepare_data(X, y, seed, size0, size1, dataset_name, model_type):
+def prepare_data(X, y, seed, size0, size1, dataset_name, model_old, model_new):
     # Data spliting for old models (subsets of 20%)
     from sklearn.model_selection import train_test_split
+    
+    # Dataset-specific subsampling: adult is large, reduce to 20% before splitting
+    SUBSAMPLE_FRACTIONS = {'adult': 0.20, 'compas': 0.70}
+    if dataset_name.lower() in SUBSAMPLE_FRACTIONS:
+        frac = SUBSAMPLE_FRACTIONS[dataset_name.lower()]
+        n_sub = int(len(X) * frac)
+        rng = np.random.RandomState(seed)
+        sub_idx = rng.choice(len(X), size=n_sub, replace=False)
+        X = X.iloc[sub_idx].reset_index(drop=True)
+        y = y.iloc[sub_idx].reset_index(drop=True)
+        print(f"[prepare_data] Subsampled '{dataset_name}' to {len(X)} samples ({frac*100:.0f}%)")
+    
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.25, random_state=seed)
     
     n = len(X_tr)
@@ -40,7 +52,7 @@ def prepare_data(X, y, seed, size0, size1, dataset_name, model_type):
     ind0 = random.sample(ind1, int(n * size0)) # ind0 is a subset of ind1
 
     # Apply specific normalization for SVM mdoels
-    if model_type == 'svm':
+    if model_old == 'svm' or model_new == 'svm':
         X0_tr = normalize(X_tr.iloc[ind0, :], axis=0)
         X1_tr = normalize(X_tr.iloc[ind1, :], axis=0)
         X_te_final = normalize(X_te, axis=0)

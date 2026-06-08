@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 import wandb
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, accuracy_score, balanced_accuracy_score
 from tqdm.keras import TqdmCallback
 from wandb.integration.keras import WandbMetricsLogger
 
@@ -28,7 +28,8 @@ def print_balanced_details(y_true, y_pred, model_label="Model"):
     print(f"Balanced Accuracy:   {balanced_acc:.4f}")
     print(f"Confusion Matrix:    [TN: {tn}, FP: {fp} / FN: {fn}, TP: {tp}]")
 
-def run_baselines(args, train_df, val_df, builder_old, pre_fn_old, builder_new, pre_fn_new):
+def run_baselines(args, train_df, val_df, builder_old, pre_fn_old, builder_new, pre_fn_new,
+                  old_path=None, new_path=None, class_weight=None):
     """
     Trains the Reference (Old) and Naive (New) models.
     Computes initial Negative Flips to identify the target group for mitigation.
@@ -55,8 +56,13 @@ def run_baselines(args, train_df, val_df, builder_old, pre_fn_old, builder_new, 
     model_old = builder_old(input_shape=args.image_size + (3,))
     model_old.compile(optimizer=tf.keras.optimizers.Adam(args.lr), loss='binary_crossentropy', metrics=['accuracy', tf.keras.metrics.AUC(name='auc')])
     
-    model_old.fit(ds_old, validation_data=ds_val_old, epochs=args.epochs, callbacks=[WandbMetricsLogger(), TqdmCallback()], verbose=0)
+    model_old.fit(ds_old, validation_data=ds_val_old, epochs=args.epochs,
+                  callbacks=[WandbMetricsLogger(), TqdmCallback()],
+                  class_weight=class_weight, verbose=0)
     wandb.finish()
+    
+    if old_path:
+        model_old.save(old_path)
 
     # 2. Naive Update Model (New Architecture/Full data)
     ds_new = make_baseline_dataset(train_df, args.batch_size, args.seed, pre_fn_new, args.image_size, augment=args.augment)
@@ -67,7 +73,12 @@ def run_baselines(args, train_df, val_df, builder_old, pre_fn_old, builder_new, 
     model_new = builder_new(input_shape=args.image_size + (3,))
     model_new.compile(optimizer=tf.keras.optimizers.Adam(args.lr), loss='binary_crossentropy', metrics=['accuracy', tf.keras.metrics.AUC(name='auc')])
     
-    model_new.fit(ds_new, validation_data=ds_val_new, epochs=args.epochs, callbacks=[WandbMetricsLogger(), TqdmCallback()], verbose=0)
+    model_new.fit(ds_new, validation_data=ds_val_new, epochs=args.epochs,
+                  callbacks=[WandbMetricsLogger(), TqdmCallback()],
+                  class_weight=class_weight, verbose=0)
+
+    if new_path:
+        model_new.save(new_path)
 
     # 3. Compute Predictions & FBC Metrics
     val_imgs_old = make_image_ds(val_df['file'].values, args.batch_size, pre_fn_old, args.image_size)
@@ -92,8 +103,22 @@ def run_baselines(args, train_df, val_df, builder_old, pre_fn_old, builder_new, 
     wandb.log({"initial_UR_disparity": ur_disparity})
     wandb.finish()
 
+    # Compute overall performance metrics
+    y_true = val_df['target'].values
+    acc_old = accuracy_score(y_true, val_df['y_old_pred'].values)
+    acc_new = accuracy_score(y_true, y_new_val)
+    bacc_old = balanced_accuracy_score(y_true, val_df['y_old_pred'].values)
+    bacc_new = balanced_accuracy_score(y_true, y_new_val)
+
     # Save metrics and cleanup
-    save_metrics_json(os.path.join(args.output_dir, f"baseline_metrics_{timestamp}.json"), {"UR_disparity": ur_disparity})
+    metrics_to_save = {
+        "UR_disparity": ur_disparity,
+        "acc_old": float(acc_old),
+        "acc_new": float(acc_new),
+        "bacc_old": float(bacc_old),
+        "bacc_new": float(bacc_new)
+    }
+    save_metrics_json(os.path.join(args.output_dir, f"baseline_metrics_{timestamp}.json"), metrics_to_save)
     
     del model_old, model_new
     tf.keras.backend.clear_session()

@@ -89,3 +89,26 @@ def build_model_CNN(input_shape):
     outputs = Dense(1, activation="sigmoid", name='pred')(x)
     
     return Model(inputs=inputs, outputs=outputs, name="CustomCNN_FBC")
+
+def build_model_vit_small(input_shape):
+    """
+    Medium Vision Transformer (DeiT-Small) via KerasHub.
+    ~22M parameters (equivalent to ResNet-50).
+    """
+    base = keras_hub.models.Backbone.from_preset(
+        "deit_small_distilled_patch16_224_imagenet",
+        input_shape=input_shape,
+        include_top=False,
+    )
+    base.trainable = False
+
+    x = base.output
+    if isinstance(x, dict):
+        x = list(x.values())[-1]
+        
+    if len(x.shape) == 3: # (batch, sequence, features)
+        x = layers.GlobalAveragePooling1D(name="avg_pool")(x)
+        
+    outputs = layers.Dense(1, activation="sigmoid", name="pred")(x)
+    
+    return Model(inputs=base.input, outputs=outputs, name="ViT_Small_FBC")

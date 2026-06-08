@@ -14,7 +14,7 @@ from utils.fairnessUtils import negativeFlip_rate
 def cvFair_double_step(df, lambda_vals, lr_vals, batch_size_vals, threshold, target_group,
                         nf_type, args, builder, pre_fn, img_size):
     """
-    Implements the Double-Step Cross-Validation strategy (mitigation FBC-S) from the paper:
+    Implements the Double-Step Cross-Validation strategy (mitigation FBC-S) described in the paper:
     Step 1: Grid search over Lambda (constraint weight), LR, and Batch Size.
     Step 2: Filter models within a tolerable accuracy drop (threshold) of the max accuracy.
     Step 3: Select the candidate with the lowest Unfair Regression (UR), namely FBC.
@@ -43,13 +43,13 @@ def cvFair_double_step(df, lambda_vals, lr_vals, batch_size_vals, threshold, tar
     for params in tqdm(param_list, desc="Hyperparameter Grid"):
         lam = params['lambda']
         lr  = params['learning_rate']
-        bs  = params['batch_size']
+        bs  = int(params['batch_size'])
 
         acc_folds, ur_folds = [], []
         skf = StratifiedKFold(n_splits=args.folds, shuffle=True, random_state=args.seed)
 
         for fold_idx, (tr_idx, vl_idx) in enumerate(skf.split(df['file'], df['target'])):
-            # Memory safety: Clear GPU memory at the start of every fold
+            # Memory safety: clear GPU memory at the start of every fold
             tf.keras.backend.clear_session()
             gc.collect()
 
@@ -58,27 +58,27 @@ def cvFair_double_step(df, lambda_vals, lr_vals, batch_size_vals, threshold, tar
             ds_tr = make_fair_dataset(df_tr, bs, args.seed, pre_fn, img_size, augment=args.augment)
             ds_vl = make_fair_dataset(df_vl, bs, args.seed, pre_fn, img_size, augment=False)
 
-            # Initialize architecture
-            base_model = builder(input_shape=img_size + (3,))
-            
-            # Wrap in FBC specialized Model
-            fm = FairModel(
-                base_model, 
-                target_group=target_group, 
-                lambda_=lam, 
-                NFtype=nf_type, 
-                use_weights=args.use_weights, 
-                mitig2b=args.mitig2b
-            )
-            
-            fm.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr))
-
-            callbacks = [
-                tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),
-                tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=1e-7)
-            ]
-            
             try:
+                # Initialize architecture
+                base_model = builder(input_shape=img_size + (3,))
+                
+                # Wrap in FBC specialized Model
+                fm = FairModel(
+                    base_model, 
+                    target_group=target_group, 
+                    lambda_=lam, 
+                    NFtype=nf_type, 
+                    use_weights=args.use_weights, 
+                    mitig2b=args.mitig2b
+                )
+                
+                fm.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr))
+
+                callbacks = [
+                    tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),
+                    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=1e-7)
+                ]
+                
                 fm.fit(ds_tr, validation_data=ds_vl, epochs=args.epochs, callbacks=callbacks, verbose=0)
             except ResourceExhaustedError:
                 print(f"\n[Warning] OOM with Batch Size {bs}. Skipping combination.")
@@ -130,5 +130,9 @@ def cvFair_double_step(df, lambda_vals, lr_vals, batch_size_vals, threshold, tar
     print(f"\nCV Complete. Best Params Selected:")
     print(f" > Lambda: {best_row['lambda']} | LR: {best_row['learning_rate']} | BS: {best_row['batch_size']}")
     print(f" > Expected Acc: {best_row['mean_acc']:.4f} | Expected UR: {best_row['mean_UR']:.4f}")
+
+    # Final cleanup after CV grid search (helps avoiding OOM error)
+    tf.keras.backend.clear_session()
+    gc.collect()
 
     return (best_row['lambda'], best_row['learning_rate'], best_row['batch_size']), df_results, candidates

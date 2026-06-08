@@ -1,6 +1,6 @@
 # Fair Backward Compatibility (FBC)
 
-This repository contains the official implementation of the **Fair Backward Compatibility** framework described in the paper *Fair Backward Compatibility: Definitions, Theoretical Framework, and Empirical Results*.
+This repository contains the implementation of the **Fair Backward Compatibility** framework described in the accompanying anonymized manuscript *Fair Backward Compatibility: Definitions, Theoretical Framework, and Empirical Results*.
 
 ## Abstract
 Machine learning model updates often prioritize aggregate performance (e.g., accuracy) while neglecting sample-wise behavior. This can lead to **negative flips**—instances where a new model ($f_{new}$) fails on samples correctly predicted by a legacy model ($f_{old}$). When these flips disproportionately affect groups defined by sensitive attributes (e.g., race or sex), the models become both backward-incompatible and unfair.
@@ -22,7 +22,7 @@ We propose **Fair Backward-Compatible Empirical Risk Minimization (FBCERM)**, a 
 The project is organized into two main modules, each containing its own data handling, configuration, and execution logic:
 
 * **/shallow-fair-learning**: FBC implementation for traditional "shallow" models (we use SVM and XGBoost).
-    * `main.py`:  entry point for running experimental sweeps across datasets and seeds.
+    * `main.py`:  entry point for running experimental sweeps across datasets and seeds. Define here dataset names and models to train. 
     * `runner.py`: training of legacy models ($f_{old}$) and the application of FBC mitigation for new models ($f_{new}$).
     * `engines.py`: mathematical implementation of FBC-S, FBC-D, and FBC-C.
     * `config.py`: defines hyperparameter grids and experiment settings.
@@ -71,7 +71,7 @@ The `deep-fair-learning` module utilizes larger image and clinical datasets:
 1. **Clone the repository:**
    ```
    bash
-   git clone [https://github.com/AnnaPallares/fair-backward-compatibility.git](https://github.com/AnnaPallares/fair-backward-compatibility.git)
+   git clone <ANONYMIZED_REPOSITORY_URL>
    cd fair-backward-compatibility
    ```
 
@@ -90,19 +90,17 @@ The `deep-fair-learning` module utilizes larger image and clinical datasets:
     python main.py
     ```
 * Deep Learning Experiments
-    ```
-    bash
+    ```bash
     cd deep-fair-learning
     python main.py --dataset dataset_name
     ```
 
-## **Citation**
-If you use this code or framework in your research, please cite:
+## Reproducibility
+To ensure the reproducibility of the results presented in the paper, we provide the exact random seeds used for data splitting and model initialization.
 
-@article{pallares-lopez2026fbc,
-  title={Fair Backward Compatibility: Definitions, Theoretical Framework, and Empirical Results},
-  author={Pallares-Lopez, A. and Buselli, I. and Anguita, D. and Roli, F. and Oneto, L.},
-  journal={Complex & Intelligent Systems (Special Issue), Springer Nature (Under Review)},
-  year={2026},
-  url={[https://github.com/AnnaPallares/fair-backward-compatibility](https://github.com/AnnaPallares/fair-backward-compatibility)}
-}
+* **Shallow Learning (Tabular Datasets):** Results were averaged over 30 runs. For individual runs, the random seed can be adjusted in `shallow-fair-learning/config.py` (default is `0`). To reproduce academic results, iterate from seed `0` to `29`.
+* **Deep Learning (Vision & Clinical Datasets):** Results were averaged over 10 independent runs using the following specific seeds:
+  `743, 1657, 2237, 3121, 5231, 5483, 5503, 7517, 8431, 9949`.
+
+## **Citation**
+This repository accompanies an anonymized manuscript currently under double-blind review. Full citation metadata will be added after the review process.
