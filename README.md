@@ -1,6 +1,8 @@
 # Fair Backward Compatibility (FBC)
 
-This repository contains the implementation of the **Fair Backward Compatibility** framework described in the accompanying anonymized manuscript *Fair Backward Compatibility: Definitions, Theoretical Framework, and Empirical Results*.
+This repository contains the code accompanying our paper, “Fair backward compatibility: definitions, theoretical framework, and empirical results,” by Anna Pallarès López, Irene Buselli, Davide Anguita, Fabio Roli, and Luca Oneto. The paper was published online in *Complex & Intelligent Systems* on 6 September 2026.
+
+**Paper:** [Springer article page](https://doi.org/10.1007/s40747-026-02503-0)
 
 ## Abstract
 Machine learning model updates often prioritize aggregate performance (e.g., accuracy) while neglecting sample-wise behavior. This can lead to **negative flips**—instances where a new model ($f_{new}$) fails on samples correctly predicted by a legacy model ($f_{old}$). When these flips disproportionately affect groups defined by sensitive attributes (e.g., race or sex), the models become both backward-incompatible and unfair.
@@ -24,7 +26,7 @@ The project is organized into two main modules, each containing its own data han
 * **/shallow-fair-learning**: FBC implementation for traditional "shallow" models (we use SVM and XGBoost).
     * `main.py`:  entry point for running experimental sweeps across datasets and seeds. Define here dataset names and models to train. 
     * `runner.py`: training of legacy models ($f_{old}$) and the application of FBC mitigation for new models ($f_{new}$).
-    * `engines.py`: mathematical implementation of FBC-S, FBC-D, and FBC-C.
+    * `engine.py`: mathematical implementation of FBC-S, FBC-D, and FBC-C.
     * `config.py`: defines hyperparameter grids and experiment settings.
     * `utils/`: helper scripts for data preprocessing and calculation of metrics.
 
@@ -71,7 +73,7 @@ The `deep-fair-learning` module utilizes larger image and clinical datasets:
 1. **Clone the repository:**
    ```
    bash
-   git clone <ANONYMIZED_REPOSITORY_URL>
+   git clone https://github.com/AnnaPallares/fair-backward-compatibility.git
    cd fair-backward-compatibility
    ```
 
@@ -103,4 +105,4 @@ To ensure the reproducibility of the results presented in the paper, we provide 
   `743, 1657, 2237, 3121, 5231, 5483, 5503, 7517, 8431, 9949`.
 
 ## **Citation**
-This repository accompanies an anonymized manuscript currently under double-blind review. Full citation metadata will be added after the review process.
+Pallarès-López, A., Buselli, I., Anguita, D., Roli, F., & Oneto, L. (2026). Fair backward compatibility: definitions, theoretical framework, and empirical results. *Complex & Intelligent Systems*. https://doi.org/10.1007/s40747-026-02503-0
